@@ -1,10 +1,22 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use ndarray::{s, Array, Axis};
 use ort::{inputs, Session, SessionOutputs};
-use std::path::Path;
+use raqote::{DrawOptions, DrawTarget, LineJoin, PathBuilder, SolidSource, Source, StrokeStyle};
+use show_image::{event, AsImageView, WindowOptions};
 
 const MODEL_PATH: &str = "onnx_models/yolov8m.onnx";
+#[rustfmt::skip]
+const YOLOV8_CLASS_LABELS: [&str; 80] = [
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+	"fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant",
+	"bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard",
+	"sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle",
+	"wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+	"carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet",
+	"tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+	"book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+];
 
 pub struct Detector {
     session: Session,
@@ -28,7 +40,7 @@ impl Detector {
         // Placeholder return to match expected function signature
 
         let (img_width, img_height) = (image.width(), image.height());
-        let img = original_img.resize_exact(640, 640, FilterType::CatmullRom);
+        let img = image.resize_exact(640, 640, FilterType::CatmullRom);
         let mut input = Array::zeros((1, 3, 640, 640));
         for pixel in img.pixels() {
             let x = pixel.0 as _;
@@ -39,7 +51,7 @@ impl Detector {
             input[[0, 2, y, x]] = (b as f32) / 255.;
         }
         // Run YOLOv8 inference
-        let outputs: SessionOutputs = model.run(inputs!["images" => input.view()]?)?;
+        let outputs: SessionOutputs = self.session.run(inputs!["images" => input.view()]?)?;
         let output = outputs["output0"]
             .extract_tensor::<f32>()
             .unwrap()
@@ -132,7 +144,6 @@ impl Detector {
         }
 
         let overlay: show_image::Image = dt.into();
-        let overlay: show_image::Image = dt.into();
 
         let window = show_image::context()
             .run_function_wait(move |context| -> Result<_, String> {
@@ -147,7 +158,7 @@ impl Detector {
                     .map_err(|e| e.to_string())?;
                 window.set_image(
                     "baseball",
-                    &original_img.as_image_view().map_err(|e| e.to_string())?,
+                    &image.as_image_view().map_err(|e| e.to_string())?,
                 );
                 window.set_overlay(
                     "yolo",
