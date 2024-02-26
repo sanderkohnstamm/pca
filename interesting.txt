@@ -1,0 +1,3 @@
+Makefile for everything: https://github.com/hybridgroup/gocv/blob/release/Makefile
+rust model boilerplate: https://github.com/LdDl/object-detection-opencv-rust/tree/master?tab=readme-ov-file
+onnx crates: https://www.reddit.com/r/rust/comments/186plbx/onnx_libraries_in_rust/

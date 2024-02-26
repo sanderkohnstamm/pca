@@ -28,7 +28,7 @@ fn main() -> Result<()> {
             // Convert the `frame` into a format that your detection model expects
             // This might involve converting `frame` to a `DynamicImage`, then:
 
-            let detections = detector.detect(frame)?;
+            let detections = detector.detect(frame.clone())?;
 
             // Display the processed frame
             highgui::imshow("Webcam", &frame)?;

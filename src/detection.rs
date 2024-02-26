@@ -1,9 +1,10 @@
-use anyhow::Result;
-use image::{imageops::FilterType, DynamicImage, GenericImageView};
-use ndarray::{s, Array, Axis};
-use ort::{inputs, Session, SessionOutputs};
-use raqote::{DrawOptions, DrawTarget, LineJoin, PathBuilder, SolidSource, Source, StrokeStyle};
-use show_image::{event, AsImageView, WindowOptions};
+use ndarray::{s, Array4, Axis};
+use opencv::{
+    core::{Size, CV_32F, CV_32FC3},
+    imgproc::{self, resize},
+    prelude::*,
+};
+use ort::{inputs, Error, Session, SessionOutputs};
 
 const MODEL_PATH: &str = "onnx_models/yolov8m.onnx";
 #[rustfmt::skip]
@@ -23,7 +24,7 @@ pub struct Detector {
 }
 
 impl Detector {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, ort::Error> {
         ort::init()
             .with_execution_providers([ort::CUDAExecutionProvider::default().build()])
             .commit()?;
@@ -33,153 +34,119 @@ impl Detector {
         Ok(Detector { session })
     }
 
-    pub fn detect(&self, image: DynamicImage) -> Result<Vec<(BoundingBox, &str, f32)>> {
+    pub fn detect(&self, frame: Mat) -> Result<Vec<(BoundingBox, &str, f32)>, ort::Error> {
         // Your detection logic here, adapted from your main program
         // For example, resize the image, process it, and run the detection model
 
         // Placeholder return to match expected function signature
+        // Assume `frame` is your input image as a Mat object
+        // Preprocess the frame: resize, normalize, etc.
+        let processed_frame = self.preprocess_frame(&frame).unwrap();
 
-        let (img_width, img_height) = (image.width(), image.height());
-        let img = image.resize_exact(640, 640, FilterType::CatmullRom);
-        let mut input = Array::zeros((1, 3, 640, 640));
-        for pixel in img.pixels() {
-            let x = pixel.0 as _;
-            let y = pixel.1 as _;
-            let [r, g, b, _] = pixel.2 .0;
-            input[[0, 0, y, x]] = (r as f32) / 255.;
-            input[[0, 1, y, x]] = (g as f32) / 255.;
-            input[[0, 2, y, x]] = (b as f32) / 255.;
-        }
+        // Convert processed_frame into a tensor format expected by ORT
+        // For simplicity, let's assume `to_tensor` returns an ndarray::Array4<f32>
+        // which represents data in [Batch, Channel, Height, Width] format
+        let tensor = self.to_tensor(&processed_frame)?;
+
+        // Use the `inputs!` macro to prepare the input for the session
+        // Assuming `tensor` is now in the correct shape and data type
+        let inputs = inputs![tensor]?;
+
         // Run YOLOv8 inference
-        let outputs: SessionOutputs = self.session.run(inputs!["images" => input.view()]?)?;
+        let outputs: SessionOutputs = self.session.run(inputs)?;
+
+        // Process outputs to extract bounding boxes, labels, and scores
+        let detections = self.process_outputs(outputs).unwrap();
+
+        Ok(detections)
+    }
+
+    fn preprocess_frame(&self, frame: &Mat) -> Result<Mat, anyhow::Error> {
+        let target_size = Size::new(640, 640); // Example: YOLOv8's expected input size
+        let mut resized = Mat::default();
+        resize(
+            frame,
+            &mut resized,
+            target_size,
+            0.0,
+            0.0,
+            imgproc::INTER_LINEAR,
+        )?;
+
+        // Convert BGR to RGB if necessary (assuming the model expects RGB)
+        let mut rgb = Mat::default();
+        imgproc::cvt_color(&resized, &mut rgb, imgproc::COLOR_BGR2RGB, 0)?;
+
+        // Normalize the pixel values to [0, 1] or another range if required
+        let mut normalized = Mat::default();
+        rgb.convert_to(&mut normalized, CV_32FC3, 1.0 / 255.0, 0.0)?;
+
+        Ok(normalized)
+    }
+
+    fn to_tensor(&self, processed_frame: &Mat) -> Result<Array4<f32>, ort::Error> {
+        let height = processed_frame.rows() as usize;
+        let width = processed_frame.cols() as usize;
+        let channels = 3; // Assuming the frame is RGB
+
+        let data = unsafe {
+            // Ensure `processed_frame` is of type CV_32FC3 and continuous
+            if !processed_frame.is_continuous() {
+                // Handle the error appropriately
+                panic!("Frame is not continuous.");
+            }
+
+            // Calculate the total number of `f32` elements in the CV_32FC3 matrix
+            let num_elements = height * width * channels * 3; // Three times for three channels
+
+            // Access the raw data of the matrix
+            // The data type here is assumed to be `Vec<u8>` because OpenCV Mat data is stored as bytes.
+            // Each f32 value is 4 bytes, so we need to work with the raw byte data.
+            let data_ptr = processed_frame.data();
+
+            // Interpret the raw byte data as f32 values. This requires dividing the total byte length by 4 (size of f32).
+            let f32_slice = std::slice::from_raw_parts(data_ptr as *const f32, num_elements);
+
+            f32_slice.to_vec()
+        };
+
+        // Create an ndarray from the raw data slice with the correct shape
+        let tensor = Array4::from_shape_vec((1, channels, height, width), data.to_vec()).unwrap();
+
+        // Depending on your model's expected input format, you might need to permute the axes.
+        // This example assumes that the model expects the format to be (Batch, Height, Width, Channels),
+        // which is common for models trained with TensorFlow. Adjust the permuted_axes call as needed for your model.
+        let tensor = tensor.permuted_axes([0, 2, 3, 1]);
+
+        Ok(tensor)
+    }
+
+    fn process_outputs(
+        &self,
+        outputs: SessionOutputs,
+    ) -> Result<Vec<(BoundingBox, &str, f32)>, anyhow::Error> {
+        // Placeholder: Parse the outputs to extract bounding boxes, labels, and scores.
+        // This will involve interpreting the raw output tensors from the model,
+        // applying confidence thresholds, and performing non-maximum suppression.
         let output = outputs["output0"]
             .extract_tensor::<f32>()
             .unwrap()
             .view()
             .t()
             .into_owned();
+        // Example output structure for illustration only
+        let detections = vec![(
+            BoundingBox {
+                x1: 0.1,
+                y1: 0.2,
+                x2: 0.3,
+                y2: 0.4,
+            },
+            "person",
+            0.95,
+        )];
 
-        let mut boxes = Vec::new();
-        let output = output.slice(s![.., .., 0]);
-        for row in output.axis_iter(Axis(0)) {
-            let row: Vec<_> = row.iter().copied().collect();
-            let (class_id, prob) = row
-                .iter()
-                // skip bounding box coordinates
-                .skip(4)
-                .enumerate()
-                .map(|(index, value)| (index, *value))
-                .reduce(|accum, row| if row.1 > accum.1 { row } else { accum })
-                .unwrap();
-            if prob < 0.5 {
-                continue;
-            }
-            let label = YOLOV8_CLASS_LABELS[class_id];
-            let xc = row[0] / 640. * (img_width as f32);
-            let yc = row[1] / 640. * (img_height as f32);
-            let w = row[2] / 640. * (img_width as f32);
-            let h = row[3] / 640. * (img_height as f32);
-            boxes.push((
-                BoundingBox {
-                    x1: xc - w / 2.,
-                    y1: yc - h / 2.,
-                    x2: xc + w / 2.,
-                    y2: yc + h / 2.,
-                },
-                label,
-                prob,
-            ));
-        }
-
-        boxes.sort_by(|box1, box2| box2.2.total_cmp(&box1.2));
-        let mut result = Vec::new();
-
-        while !boxes.is_empty() {
-            result.push(boxes[0]);
-            boxes = boxes
-                .iter()
-                .filter(|box1| {
-                    intersection(&boxes[0].0, &box1.0) / union(&boxes[0].0, &box1.0) < 0.7
-                })
-                .copied()
-                .collect();
-        }
-
-        let mut dt = DrawTarget::new(img_width as _, img_height as _);
-
-        for (bbox, label, _confidence) in result {
-            let mut pb = PathBuilder::new();
-            pb.rect(bbox.x1, bbox.y1, bbox.x2 - bbox.x1, bbox.y2 - bbox.y1);
-            let path = pb.finish();
-            let color = match label {
-                "baseball bat" => SolidSource {
-                    r: 0x00,
-                    g: 0x10,
-                    b: 0x80,
-                    a: 0x80,
-                },
-                "baseball glove" => SolidSource {
-                    r: 0x20,
-                    g: 0x80,
-                    b: 0x40,
-                    a: 0x80,
-                },
-                _ => SolidSource {
-                    r: 0x80,
-                    g: 0x10,
-                    b: 0x40,
-                    a: 0x80,
-                },
-            };
-            dt.stroke(
-                &path,
-                &Source::Solid(color),
-                &StrokeStyle {
-                    join: LineJoin::Round,
-                    width: 4.,
-                    ..StrokeStyle::default()
-                },
-                &DrawOptions::new(),
-            );
-        }
-
-        let overlay: show_image::Image = dt.into();
-
-        let window = show_image::context()
-            .run_function_wait(move |context| -> Result<_, String> {
-                let mut window = context
-                    .create_window(
-                        "ort + YOLOv8",
-                        WindowOptions {
-                            size: Some([img_width, img_height]),
-                            ..WindowOptions::default()
-                        },
-                    )
-                    .map_err(|e| e.to_string())?;
-                window.set_image(
-                    "baseball",
-                    &image.as_image_view().map_err(|e| e.to_string())?,
-                );
-                window.set_overlay(
-                    "yolo",
-                    &overlay.as_image_view().map_err(|e| e.to_string())?,
-                    true,
-                );
-                Ok(window.proxy())
-            })
-            .unwrap();
-
-        for event in window.event_channel().unwrap() {
-            if let event::WindowEvent::KeyboardInput(event) = event {
-                if event.input.key_code == Some(event::VirtualKeyCode::Escape)
-                    && event.input.state.is_pressed()
-                {
-                    break;
-                }
-            }
-        }
-
-        Ok(vec![])
+        Ok(detections)
     }
 }
 
