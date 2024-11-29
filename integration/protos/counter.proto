@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package counter;
+
+service CounterService {
+  rpc Ping(ProtoPing) returns (Empty);
+  rpc UpdateCounterWith(ProtoCount) returns (Empty);
+}
+
+message Empty {}
+
+message ProtoCount {
+  string id = 1;
+  int32 count = 2;
+}
+
+message ProtoPing {
+  string id = 1;
+}
+

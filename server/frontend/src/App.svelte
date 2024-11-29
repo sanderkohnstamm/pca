@@ -1,7 +1,7 @@
 <script>
 	import { onMount } from "svelte";
 
-	let counter = 0;
+	let counters = [];
 	let socket;
 
 	// Automatically connect when the component is mounted
@@ -17,10 +17,15 @@
 		};
 
 		socket.onmessage = (event) => {
-			console.log("Message received from server:", event.data);
-			const data = event.data;
-			if (data.startsWith("Counter: ")) {
-				counter = parseInt(data.split(": ")[1]);
+			console.log("WebSocket message:", event.data);
+			try {
+				const data = JSON.parse(event.data);
+				console.log("json:", data);
+				if (data.type === "update") {
+					counters = data.counters;
+				}
+			} catch (e) {
+				console.error("Failed to parse WebSocket message:", e);
 			}
 		};
 
@@ -35,9 +40,33 @@
 		};
 	}
 
-	function incrementCounter() {
+	function clearCounter(id) {
 		if (socket && socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ action: "increment" }));
+			socket.send(JSON.stringify({ action: "remove", id }));
+		} else {
+			console.error("WebSocket is not open");
+		}
+	}
+
+	function incrementCounter(id) {
+		if (socket && socket.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify({ action: "increment", id }));
+		} else {
+			console.error("WebSocket is not open");
+		}
+	}
+
+	function decrementCounter(id) {
+		if (socket && socket.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify({ action: "decrement", id }));
+		} else {
+			console.error("WebSocket is not open");
+		}
+	}
+
+	function setCounter(id, count) {
+		if (socket && socket.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify({ action: "set", id, count }));
 		} else {
 			console.error("WebSocket is not open");
 		}
@@ -45,10 +74,18 @@
 </script>
 
 <main>
-	<button on:click={incrementCounter}>Increment Counter</button>
-	<div class="counter">
-		Counter: {counter}
-	</div>
+	<h1>Counters</h1>
+	<ul>
+		{#each counters as { id, count }}
+			<li>
+				ID: {id}, Count: {count}
+				<button on:click={() => incrementCounter(id)}>Increment</button>
+				<button on:click={() => decrementCounter(id)}>Decrement</button>
+				<button on:click={() => setCounter(id, 0)}>Set to 0</button>
+				<button on:click={() => clearCounter(id)}>Remove</button>
+			</li>
+		{/each}
+	</ul>
 </main>
 
 <style>
@@ -59,8 +96,14 @@
 		margin: 0 auto;
 		position: relative;
 	}
-	.counter {
-		margin-top: 1em;
-		font-size: 1.5em;
+	ul {
+		list-style-type: none;
+		padding: 0;
+	}
+	li {
+		margin: 1em 0;
+	}
+	button {
+		margin-left: 1em;
 	}
 </style>

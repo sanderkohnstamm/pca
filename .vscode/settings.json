@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./client/src/generated_protos/counter_pb2_"
+    ]
+}

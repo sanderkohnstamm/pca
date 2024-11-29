@@ -1,22 +1,27 @@
-use futures_util::{stream::StreamExt as StreamExtTrait, SinkExt};
+use crate::counter_store::CounterStore;
+use futures_util::SinkExt;
+use futures_util::StreamExt;
 use log::{error, info};
+use serde_json::Value;
 use std::sync::Arc;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::broadcast;
+use tokio::sync::Mutex;
+use warp::filters::ws::Message;
 use warp::ws::WebSocket;
 
 pub struct WebSocketConnection {
     ws: WebSocket,
     tx: Arc<Mutex<broadcast::Sender<String>>>,
-    counter: Arc<Mutex<i32>>,
+    counters: Arc<Mutex<CounterStore>>,
 }
 
 impl WebSocketConnection {
     pub fn new(
         ws: WebSocket,
         tx: Arc<Mutex<broadcast::Sender<String>>>,
-        counter: Arc<Mutex<i32>>,
+        counters: Arc<Mutex<CounterStore>>,
     ) -> Self {
-        Self { ws, tx, counter }
+        Self { ws, tx, counters }
     }
 
     pub async fn handle_connection(self) {
@@ -28,16 +33,19 @@ impl WebSocketConnection {
 
         // Send the current counter value upon connection
         {
-            let counter = self.counter.lock().await;
-            let msg = format!("Counter: {}", *counter);
+            let counter = self.counters.lock().await;
+            let msg = counter.to_ws_message();
             if let Err(e) = ws_tx.send(warp::ws::Message::text(msg)).await {
                 error!("Error sending initial counter message: {}", e);
             }
         }
 
         // Spawn a task to listen for broadcast messages and send them to the client
+        let counter_store_clone = self.counters.clone();
         tokio::spawn(async move {
-            while let Ok(msg) = rx.recv().await {
+            while let Ok(_) = rx.recv().await {
+                let counter = counter_store_clone.lock().await;
+                let msg = counter.to_ws_message();
                 if let Err(e) = ws_tx.send(warp::ws::Message::text(msg)).await {
                     error!("Error sending counter message: {}", e);
                 }
@@ -45,22 +53,13 @@ impl WebSocketConnection {
         });
 
         while let Some(result) = ws_rx.next().await {
+            let tx = self.tx.clone();
             match result {
                 Ok(msg) => {
+                    let counters: tokio::sync::MutexGuard<'_, CounterStore> =
+                        self.counters.lock().await;
                     info!("Received message from client: {:?}", msg);
-                    if msg.is_text() {
-                        let text = msg.to_str().unwrap();
-                        if text == "{\"action\":\"increment\"}" {
-                            let mut counter = self.counter.lock().await;
-                            *counter += 1;
-                            let msg = format!("Counter: {}", *counter);
-                            info!("Broadcasting counter message: {}", msg);
-                            let tx = self.tx.lock().await;
-                            if let Err(e) = tx.send(msg) {
-                                error!("Error broadcasting counter message: {}", e);
-                            }
-                        }
-                    }
+                    handle_message(msg, counters, tx).await;
                 }
                 Err(e) => {
                     error!("Error receiving message: {}", e);
@@ -70,4 +69,42 @@ impl WebSocketConnection {
 
         info!("WebSocket connection closed");
     }
+}
+
+async fn handle_message(
+    msg: Message,
+    mut counters: tokio::sync::MutexGuard<'_, CounterStore>,
+    tx: Arc<Mutex<broadcast::Sender<String>>>,
+) {
+    if let Ok(text) = msg.to_str() {
+        let data: Value = serde_json::from_str(text).unwrap();
+        if let Some(action) = data["action"].as_str() {
+            match action {
+                "increment" => {
+                    if let Some(id) = data["id"].as_str() {
+                        counters.increment_with(id, 1);
+                    }
+                }
+                "decrement" => {
+                    if let Some(id) = data["id"].as_str() {
+                        counters.increment_with(id, -1);
+                    }
+                }
+                "set" => {
+                    if let Some(id) = data["id"].as_str() {
+                        if let Some(count) = data["count"].as_i64() {
+                            counters.insert(id.to_string(), count as i32);
+                        }
+                    }
+                }
+                "remove" => {
+                    if let Some(id) = data["id"].as_str() {
+                        counters.remove(id);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    tx.lock().await.send("".to_string()).unwrap();
 }
