@@ -7,22 +7,26 @@ pub mod counter {
 }
 
 use crate::counter_store::CounterStore;
+use crate::text_store::TextStore;
 use counter::counter_service_server::CounterService;
-use counter::{Empty, ProtoCount, ProtoPing};
+use counter::{Empty, ProtoCount, ProtoPing, ProtoText};
 
 #[derive(Debug)]
 pub struct MyCounterService {
     counters: Arc<Mutex<CounterStore>>,
+    texts: Arc<Mutex<TextStore>>,
     broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
 }
 
 impl MyCounterService {
     pub fn new(
         counters: Arc<Mutex<CounterStore>>,
+        texts: Arc<Mutex<TextStore>>,
         broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
     ) -> Self {
         Self {
             counters,
+            texts,
             broadcast_tx,
         }
     }
@@ -48,6 +52,18 @@ impl CounterService for MyCounterService {
 
         let mut counters = self.counters.lock().await;
         counters.increment_with(&req.id, req.count);
+        self.broadcast_tx.lock().await.send("".to_string()).unwrap();
+        Ok(Response::new(Empty {}))
+    }
+
+    async fn send_text(&self, request: Request<ProtoText>) -> Result<Response<Empty>, Status> {
+        let req = request.into_inner();
+        println!(
+            "Received SendText request: id={}, text={}",
+            req.id, req.text
+        );
+        let mut texts = self.texts.lock().await;
+        texts.insert(req.id, req.text);
         self.broadcast_tx.lock().await.send("".to_string()).unwrap();
         Ok(Response::new(Empty {}))
     }

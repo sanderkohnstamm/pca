@@ -2,6 +2,7 @@
 	import { onMount } from "svelte";
 
 	let counters = [];
+	let texts = [];
 	let socket;
 
 	// Automatically connect when the component is mounted
@@ -22,7 +23,8 @@
 				const data = JSON.parse(event.data);
 				console.log("json:", data);
 				if (data.type === "update") {
-					counters = data.counters;
+					counters = data.counters || [];
+					texts = data.texts || [];
 				}
 			} catch (e) {
 				console.error("Failed to parse WebSocket message:", e);
@@ -71,6 +73,14 @@
 			console.error("WebSocket is not open");
 		}
 	}
+
+	function setToEmpty(id) {
+		if (socket && socket.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify({ action: "set_to_empty", id }));
+		} else {
+			console.error("WebSocket is not open");
+		}
+	}
 </script>
 
 <main>
@@ -83,6 +93,16 @@
 				<button on:click={() => decrementCounter(id)}>Decrement</button>
 				<button on:click={() => setCounter(id, 0)}>Set to 0</button>
 				<button on:click={() => clearCounter(id)}>Remove</button>
+			</li>
+		{/each}
+	</ul>
+
+	<h1>Texts</h1>
+	<ul>
+		{#each texts as { id, text }}
+			<li>
+				ID: {id}, Text: {text}
+				<button on:click={() => setToEmpty(id)}>Set to Empty</button>
 			</li>
 		{/each}
 	</ul>

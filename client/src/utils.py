@@ -15,6 +15,9 @@ class_names = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'tra
 rng = np.random.default_rng(3)
 colors = rng.uniform(0, 255, size=(len(class_names), 3))
 
+def return_class_names(class_ids):
+    return [class_names[class_id] for class_id in class_ids]
+
 
 def nms(boxes, scores, iou_threshold):
     # Sort by score

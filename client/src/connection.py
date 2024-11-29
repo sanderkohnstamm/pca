@@ -18,6 +18,10 @@ class CounterClient:
     def update_counter_with(self, id, count):
         request = counter_pb2.ProtoCount(id=id, count=count)
         return self.stub.UpdateCounterWith(request)
+    
+    def send_text(self, id, text):
+        request = counter_pb2.ProtoText(id=id, text=text)
+        return self.stub.SendText(request)
 
 def main():
     client = CounterClient()
@@ -32,6 +36,14 @@ def main():
         print(f"UpdateCounterWith response for count {i}:", response)
         time.sleep(1)  # Sleep for 1 second between updates
     print("UpdateCounterWith response:", response)
+
+    # Test send text   
+    for i in range(10):
+        response = client.send_text(id="test_id", text=f"Hello, World! {i}")
+        print(f"SendText response for text {i}:", response)
+        time.sleep(1)
+
+
 
 if __name__ == '__main__':
     main()

@@ -5,6 +5,7 @@ package counter;
 service CounterService {
   rpc Ping(ProtoPing) returns (Empty);
   rpc UpdateCounterWith(ProtoCount) returns (Empty);
+  rpc SendText(ProtoText) returns (Empty);
 }
 
 message Empty {}
@@ -18,3 +19,7 @@ message ProtoPing {
   string id = 1;
 }
 
+message ProtoText {
+  string id = 1;
+  string text = 2;
+}

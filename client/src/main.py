@@ -1,3 +1,5 @@
+from connection import CounterClient
+from utils import return_class_names
 import cv2
 import asyncio
 import time
@@ -8,6 +10,7 @@ async def main():
     # Initialize the components
     detector = Detector('onnx_models/yolov8n.onnx')
     dataloader = DataLoader(0)
+    client = CounterClient()
     asyncio.create_task(dataloader.start())
 
     frame_count = 0
@@ -23,13 +26,12 @@ async def main():
             start_time = time.time()
 
         boxes, scores, class_ids = detector(frame)
-        # print(f"Detected {len(boxes)} objects")
-        # print(f"Boxes: {boxes}")
+        class_names = return_class_names(class_ids)
+        client.send_text(id="test_id", text=f"Detected classes: {class_names}") 
         print(f"Class IDs: {class_ids}")
-        output_image = detector.draw_detections(frame)
-        cv2.imshow('Object Detection', output_image)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+        # print(f"Scores: {scores}")
+
+
 
     dataloader.cap.release()
     cv2.destroyAllWindows()
