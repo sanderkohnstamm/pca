@@ -81,6 +81,7 @@
 				<button on:click={() => setToEmpty(id)}>Set to Empty</button>
 				<button on:click={() => removeDetector(id)}>Remove</button>
 				<div class="detections-container">
+					<!-- svelte-ignore a11y-missing-attribute -->
 					<iframe
 						class="background-iframe"
 						src="http://localhost:8889/cam/"
