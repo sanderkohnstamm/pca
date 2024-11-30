@@ -88,14 +88,25 @@
 			socket.close();
 		}
 	});
+
+	function hashStringToColor(str, alpha = 0.2) {
+		let hash = 0;
+		for (let i = 0; i < str.length; i++) {
+			hash = str.charCodeAt(i) + ((hash << 5) - hash);
+		}
+		const r = (hash >> 16) & 0xff;
+		const g = (hash >> 8) & 0xff;
+		const b = hash & 0xff;
+		return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+	}
 </script>
 
 <main>
 	<h1>Detectors</h1>
 	<ul>
 		{#each Array.from(detectorMetadata.values()) as { id, ip }}
-			ID: {id} | IP: {ip}
 			<li>
+				ID: {id} | IP: {ip}
 				<!-- <button on:click={() => setToEmpty(id)}>Set to Empty</button>
                 <button on:click={() => removeDetector(id)}>Remove</button> -->
 				<div class="detections-container">
@@ -118,6 +129,12 @@
 								100}%;
                                 width: {detection.bounding_box.width * 100}%;
                                 height: {detection.bounding_box.height * 100}%;
+                                background-color: {hashStringToColor(
+								detection.class,
+							)};
+                                border-color: {hashStringToColor(
+								detection.class,
+							)};
                             "
 						>
 							Class: {detection.class}, Score: {detection.score}
@@ -152,9 +169,8 @@
 	}
 	.detection-box {
 		position: absolute;
-		border: 2px solid red;
+		border: 2px solid;
 		border-radius: 5px;
-		background-color: rgba(255, 0, 0, 0.2);
 		color: white;
 		font-size: 0.8em;
 		padding: 2px;
