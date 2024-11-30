@@ -3,18 +3,25 @@ import cv2
 import numpy as np
 import onnxruntime
 
-from utils import xywh2xyxy, draw_detections, multiclass_nms
+from utils import  multiclass_nms
 
 
 class Detector:
-    def __init__(self, path, conf_thres=0.7, iou_thres=0.5):
+    def __init__(self, path, conf_thres=0.7, iou_thres=0.5, full_class_names_list=[]):
+        print(conf_thres)
         self.conf_threshold = conf_thres
         self.iou_threshold = iou_thres
 
+        self.full_class_names_list = full_class_names_list
+        self.image_shape = None
         # Initialize model
         self.initialize_model(path)
 
     def __call__(self, image):
+        if not self.image_shape or self.image_shape != image.shape:
+            print("Image shape: ", image.shape)
+            self.image_shape = image.shape
+
         return self.detect_objects(image)
 
     def initialize_model(self, path):
@@ -31,9 +38,12 @@ class Detector:
         # Perform inference on the image
         outputs = self.inference(input_tensor)
 
-        self.boxes, self.scores, self.class_ids = self.process_output(outputs)
+        self.boxes, self.scores, self.class_names = self.process_output(outputs)
 
-        return self.boxes, self.scores, self.class_ids
+        return self.boxes, self.scores, self.class_names
+
+    def get_class_names(self, class_ids):
+        return [self.full_class_names_list[class_id] for class_id in class_ids]
 
     def prepare_input(self, image):
         self.img_height, self.img_width = image.shape[:2]
@@ -60,7 +70,6 @@ class Detector:
 
     def process_output(self, output):
         predictions = np.squeeze(output[0]).T
-
         # Filter out object confidence scores below threshold
         scores = np.max(predictions[:, 4:], axis=1)
         predictions = predictions[scores > self.conf_threshold, :]
@@ -74,37 +83,20 @@ class Detector:
 
         # Get bounding boxes for each object
         boxes = self.extract_boxes(predictions)
-
         # Apply non-maxima suppression to suppress weak, overlapping bounding boxes
         # indices = nms(boxes, scores, self.iou_threshold)
         indices = multiclass_nms(boxes, scores, class_ids, self.iou_threshold)
 
-        return boxes[indices], scores[indices], class_ids[indices]
+        class_names = self.get_class_names(class_ids[indices])
+
+        return boxes[indices], scores[indices], class_names
 
     def extract_boxes(self, predictions):
         # Extract boxes from predictions
         boxes = predictions[:, :4]
 
-        # Scale boxes to original image dimensions
-        boxes = self.rescale_boxes(boxes)
-
-        # Convert boxes to xyxy format
-        boxes = xywh2xyxy(boxes)
-
         return boxes
 
-    def rescale_boxes(self, boxes):
-
-        # Rescale boxes to original image dimensions
-        input_shape = np.array([self.input_width, self.input_height, self.input_width, self.input_height])
-        boxes = np.divide(boxes, input_shape, dtype=np.float32)
-        boxes *= np.array([self.img_width, self.img_height, self.img_width, self.img_height])
-        return boxes
-
-    def draw_detections(self, image, draw_scores=True, mask_alpha=0.4):
-
-        return draw_detections(image, self.boxes, self.scores,
-                               self.class_ids, mask_alpha)
 
     def get_input_details(self):
         model_inputs = self.session.get_inputs()
@@ -127,12 +119,13 @@ if __name__ == '__main__':
     image = cv2.imread('sample.jpg')
 
     # Perform object detection
-    boxes, scores, class_ids = detector(image)
+    boxes, scores, class_ids = detector(image)  
 
-    # Draw the detections on the image
-    output_image = detector.draw_detections(image)
+    print(f"Boxes: {boxes}")
+    print(f"Scores: {scores}")
+    print(f"Class IDs: {class_ids}")
 
     # Display the image
-    cv2.imshow('Object Detection', output_image)
+    cv2.imshow('B', image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

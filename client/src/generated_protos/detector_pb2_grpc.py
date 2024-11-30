@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import counter_pb2 as counter__pb2
+from . import detector_pb2 as detector__pb2
 
 GRPC_GENERATED_VERSION = '1.68.0'
 GRPC_VERSION = grpc.__version__
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in counter_pb2_grpc.py depends on'
+        + f' but the generated code in detector_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class CounterServiceStub(object):
+class DetectorServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -35,23 +35,18 @@ class CounterServiceStub(object):
             channel: A grpc.Channel.
         """
         self.Ping = channel.unary_unary(
-                '/counter.CounterService/Ping',
-                request_serializer=counter__pb2.ProtoPing.SerializeToString,
-                response_deserializer=counter__pb2.Empty.FromString,
+                '/Detector.DetectorService/Ping',
+                request_serializer=detector__pb2.ProtoPing.SerializeToString,
+                response_deserializer=detector__pb2.Empty.FromString,
                 _registered_method=True)
-        self.UpdateCounterWith = channel.unary_unary(
-                '/counter.CounterService/UpdateCounterWith',
-                request_serializer=counter__pb2.ProtoCount.SerializeToString,
-                response_deserializer=counter__pb2.Empty.FromString,
-                _registered_method=True)
-        self.SendText = channel.unary_unary(
-                '/counter.CounterService/SendText',
-                request_serializer=counter__pb2.ProtoText.SerializeToString,
-                response_deserializer=counter__pb2.Empty.FromString,
+        self.SendDetections = channel.unary_unary(
+                '/Detector.DetectorService/SendDetections',
+                request_serializer=detector__pb2.ProtoDetections.SerializeToString,
+                response_deserializer=detector__pb2.Empty.FromString,
                 _registered_method=True)
 
 
-class CounterServiceServicer(object):
+class DetectorServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def Ping(self, request, context):
@@ -60,45 +55,34 @@ class CounterServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def UpdateCounterWith(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def SendText(self, request, context):
+    def SendDetections(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_CounterServiceServicer_to_server(servicer, server):
+def add_DetectorServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Ping': grpc.unary_unary_rpc_method_handler(
                     servicer.Ping,
-                    request_deserializer=counter__pb2.ProtoPing.FromString,
-                    response_serializer=counter__pb2.Empty.SerializeToString,
+                    request_deserializer=detector__pb2.ProtoPing.FromString,
+                    response_serializer=detector__pb2.Empty.SerializeToString,
             ),
-            'UpdateCounterWith': grpc.unary_unary_rpc_method_handler(
-                    servicer.UpdateCounterWith,
-                    request_deserializer=counter__pb2.ProtoCount.FromString,
-                    response_serializer=counter__pb2.Empty.SerializeToString,
-            ),
-            'SendText': grpc.unary_unary_rpc_method_handler(
-                    servicer.SendText,
-                    request_deserializer=counter__pb2.ProtoText.FromString,
-                    response_serializer=counter__pb2.Empty.SerializeToString,
+            'SendDetections': grpc.unary_unary_rpc_method_handler(
+                    servicer.SendDetections,
+                    request_deserializer=detector__pb2.ProtoDetections.FromString,
+                    response_serializer=detector__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'counter.CounterService', rpc_method_handlers)
+            'Detector.DetectorService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('counter.CounterService', rpc_method_handlers)
+    server.add_registered_method_handlers('Detector.DetectorService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class CounterService(object):
+class DetectorService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -115,9 +99,9 @@ class CounterService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/counter.CounterService/Ping',
-            counter__pb2.ProtoPing.SerializeToString,
-            counter__pb2.Empty.FromString,
+            '/Detector.DetectorService/Ping',
+            detector__pb2.ProtoPing.SerializeToString,
+            detector__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,
@@ -129,7 +113,7 @@ class CounterService(object):
             _registered_method=True)
 
     @staticmethod
-    def UpdateCounterWith(request,
+    def SendDetections(request,
             target,
             options=(),
             channel_credentials=None,
@@ -142,36 +126,9 @@ class CounterService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/counter.CounterService/UpdateCounterWith',
-            counter__pb2.ProtoCount.SerializeToString,
-            counter__pb2.Empty.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def SendText(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/counter.CounterService/SendText',
-            counter__pb2.ProtoText.SerializeToString,
-            counter__pb2.Empty.FromString,
+            '/Detector.DetectorService/SendDetections',
+            detector__pb2.ProtoDetections.SerializeToString,
+            detector__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,

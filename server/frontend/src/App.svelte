@@ -1,9 +1,8 @@
 <script>
-	import { onMount } from "svelte";
+	import { onMount, onDestroy } from "svelte";
 
-	let counters = [];
-	let texts = [];
 	let socket;
+	let detectors = [];
 
 	// Automatically connect when the component is mounted
 	onMount(() => {
@@ -21,11 +20,7 @@
 			console.log("WebSocket message:", event.data);
 			try {
 				const data = JSON.parse(event.data);
-				console.log("json:", data);
-				if (data.type === "update") {
-					counters = data.counters || [];
-					texts = data.texts || [];
-				}
+				updateDetectors(data);
 			} catch (e) {
 				console.error("Failed to parse WebSocket message:", e);
 			}
@@ -42,7 +37,18 @@
 		};
 	}
 
-	function clearCounter(id) {
+	function updateDetectors(data) {
+		data.forEach((detector) => {
+			const index = detectors.findIndex((d) => d.id === detector.id);
+			if (index !== -1) {
+				detectors[index] = detector;
+			} else {
+				detectors.push(detector);
+			}
+		});
+	}
+
+	function removeDetector(id) {
 		if (socket && socket.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify({ action: "remove", id }));
 		} else {
@@ -50,59 +56,46 @@
 		}
 	}
 
-	function incrementCounter(id) {
-		if (socket && socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ action: "increment", id }));
-		} else {
-			console.error("WebSocket is not open");
-		}
-	}
-
-	function decrementCounter(id) {
-		if (socket && socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ action: "decrement", id }));
-		} else {
-			console.error("WebSocket is not open");
-		}
-	}
-
-	function setCounter(id, count) {
-		if (socket && socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ action: "set", id, count }));
-		} else {
-			console.error("WebSocket is not open");
-		}
-	}
-
 	function setToEmpty(id) {
 		if (socket && socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify({ action: "set_to_empty", id }));
+			socket.send(JSON.stringify({ action: "set_empty", id }));
 		} else {
 			console.error("WebSocket is not open");
 		}
 	}
+
+	// Clean up the WebSocket connection when the component is destroyed
+	onDestroy(() => {
+		if (socket) {
+			socket.close();
+		}
+	});
 </script>
 
 <main>
-	<h1>Counters</h1>
+	<h1>Detectors</h1>
 	<ul>
-		{#each counters as { id, count }}
+		{#each detectors as { id, detections }}
 			<li>
-				ID: {id}, Count: {count}
-				<button on:click={() => incrementCounter(id)}>Increment</button>
-				<button on:click={() => decrementCounter(id)}>Decrement</button>
-				<button on:click={() => setCounter(id, 0)}>Set to 0</button>
-				<button on:click={() => clearCounter(id)}>Remove</button>
-			</li>
-		{/each}
-	</ul>
-
-	<h1>Texts</h1>
-	<ul>
-		{#each texts as { id, text }}
-			<li>
-				ID: {id}, Text: {text}
+				ID: {id},
 				<button on:click={() => setToEmpty(id)}>Set to Empty</button>
+				<button on:click={() => removeDetector(id)}>Remove</button>
+				<div class="detections-container">
+					{#each detections as detection}
+						<div
+							class="detection-box"
+							style="
+                                left: {detection.bounding_box.top_left_x *
+								100}%;
+                                top: {detection.bounding_box.top_left_y * 100}%;
+                                width: {detection.bounding_box.width * 100}%;
+                                height: {detection.bounding_box.height * 100}%;
+                            "
+						>
+							Class: {detection.class}, Score: {detection.score}
+						</div>
+					{/each}
+				</div>
 			</li>
 		{/each}
 	</ul>
@@ -125,5 +118,18 @@
 	}
 	button {
 		margin-left: 1em;
+	}
+	.detections-container {
+		position: relative;
+		width: 100%;
+		height: 400px;
+		border: 1px solid #ccc;
+		overflow: hidden;
+	}
+	.detection-box {
+		position: absolute;
+		border: 2px solid red;
+		box-sizing: border-box;
+		background-color: rgba(255, 0, 0, 0.1);
 	}
 </style>

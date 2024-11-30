@@ -1,49 +1,51 @@
 import grpc
 from concurrent import futures
 import time
-import counter_pb2
-import counter_pb2_grpc
 
 # Import the generated classes
+from generated_protos import detector_pb2
+from generated_protos import detector_pb2_grpc
 
-class CounterClient:
-    def __init__(self, host='localhost', port=50051):
+
+class DetectionClient:
+    def __init__(self, host='localhost', port=50051, id='test_id'):
+        self.id = id
         self.channel = grpc.insecure_channel(f'{host}:{port}')
-        self.stub = counter_pb2_grpc.CounterServiceStub(self.channel)
+        self.stub = detector_pb2_grpc.DetectorServiceStub(self.channel)
+
+    def __call__(self, boxes, scores, class_names):
+        return self.send_detections(generate_proto_detections(self.id, boxes, scores, class_names))
 
     def ping(self, id):
-        request = counter_pb2.ProtoPing(id=id)
+        request = detector_pb2.ProtoPing(id=id)
         return self.stub.Ping(request)
 
-    def update_counter_with(self, id, count):
-        request = counter_pb2.ProtoCount(id=id, count=count)
-        return self.stub.UpdateCounterWith(request)
+    def send_detections(self, request):
+        return self.stub.SendDetections(request)
+
+
+
+def generate_proto_detections(id, boxes, scores, class_names):
+    detections = []
+    for box, score, class_name in zip(boxes, scores, class_names):
+        detection = detector_pb2.ProtoDetection(
+            class_name=class_name,
+            score=score,
+            bounding_box=detector_pb2.ProtoBoundingBox(top_left_x=box[0], top_left_y=box[1], width=box[2], height=box[3])
+        )
+        detections.append(detection)
     
-    def send_text(self, id, text):
-        request = counter_pb2.ProtoText(id=id, text=text)
-        return self.stub.SendText(request)
+    proto_detections = detector_pb2.ProtoDetections(id=id, detections=detections)
+    return proto_detections
 
 def main():
-    client = CounterClient()
-    
-    # Test ping
-    response = client.ping(id="test_id")
-    print("Ping response:", response)
+    client = DetectionClient()
+    client.ping(id="test_id")
+    boxes = [[0, 0, 100, 100], [200, 200, 300, 300]]
+    scores = [0.9, 0.8]
+    class_names = ["person", "car"]
 
-    # Test update counter
-    for i in range(10):
-        response = client.update_counter_with(id="test_id", count=i)
-        print(f"UpdateCounterWith response for count {i}:", response)
-        time.sleep(1)  # Sleep for 1 second between updates
-    print("UpdateCounterWith response:", response)
+    client(boxes, scores, class_names)
 
-    # Test send text   
-    for i in range(10):
-        response = client.send_text(id="test_id", text=f"Hello, World! {i}")
-        print(f"SendText response for text {i}:", response)
-        time.sleep(1)
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

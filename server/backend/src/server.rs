@@ -2,69 +2,60 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tonic::{Request, Response, Status};
 
-pub mod counter {
-    tonic::include_proto!("counter"); // The string specified here must match the proto package name
+pub mod detector {
+    tonic::include_proto!("detector"); // The string specified here must match the proto package name
 }
 
-use crate::counter_store::CounterStore;
-use crate::text_store::TextStore;
-use counter::counter_service_server::CounterService;
-use counter::{Empty, ProtoCount, ProtoPing, ProtoText};
+use crate::detector_store::Detection;
+use crate::detector_store::DetectorStore;
+use detector::{detector_service_server::DetectorService, Empty, ProtoDetections, ProtoPing};
 
 #[derive(Debug)]
-pub struct MyCounterService {
-    counters: Arc<Mutex<CounterStore>>,
-    texts: Arc<Mutex<TextStore>>,
+pub struct MyDetectorService {
+    detectors: Arc<Mutex<DetectorStore>>,
     broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
 }
 
-impl MyCounterService {
+impl MyDetectorService {
     pub fn new(
-        counters: Arc<Mutex<CounterStore>>,
-        texts: Arc<Mutex<TextStore>>,
+        detectors: Arc<Mutex<DetectorStore>>,
         broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
     ) -> Self {
         Self {
-            counters,
-            texts,
+            detectors,
             broadcast_tx,
         }
     }
 }
 
 #[tonic::async_trait]
-impl CounterService for MyCounterService {
+impl DetectorService for MyDetectorService {
     async fn ping(&self, request: Request<ProtoPing>) -> Result<Response<Empty>, Status> {
         let req = request.into_inner();
         println!("Received Ping request: id={}", req.id);
         Ok(Response::new(Empty {}))
     }
 
-    async fn update_counter_with(
+    async fn send_detections(
         &self,
-        request: Request<ProtoCount>,
+        request: Request<ProtoDetections>,
     ) -> Result<Response<Empty>, Status> {
         let req = request.into_inner();
-        println!(
-            "Received UpdateCounterWith request: id={}, count={}",
-            req.id, req.count
-        );
+        let mut detectors = self.detectors.lock().await;
+        let detections: Vec<Detection> = req
+            .detections
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| Status::internal(format!("Failed to convert detection: {}", e)))?;
 
-        let mut counters = self.counters.lock().await;
-        counters.increment_with(&req.id, req.count);
-        self.broadcast_tx.lock().await.send("".to_string()).unwrap();
-        Ok(Response::new(Empty {}))
-    }
+        detectors.insert(req.id, detections);
 
-    async fn send_text(&self, request: Request<ProtoText>) -> Result<Response<Empty>, Status> {
-        let req = request.into_inner();
-        println!(
-            "Received SendText request: id={}, text={}",
-            req.id, req.text
-        );
-        let mut texts = self.texts.lock().await;
-        texts.insert(req.id, req.text);
-        self.broadcast_tx.lock().await.send("".to_string()).unwrap();
+        let broadcast_tx = self.broadcast_tx.lock().await;
+        broadcast_tx
+            .send("detections".to_string())
+            .map_err(|e| Status::internal(format!("Failed to send broadcast message: {}", e)))?;
+
         Ok(Response::new(Empty {}))
     }
 }
