@@ -1,31 +1,23 @@
+import logging
 from connection import DetectionClient
+import socket
 import cv2
 import asyncio
 import time
 from detector import Detector
 from dataloader import DataLoader
 
-
-
-full_class_names_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
-               'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-               'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-               'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
-               'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-               'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-               'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
-               'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
-               'scissors', 'teddy bear', 'hair drier', 'toothbrush']
-
-
-ID = "test_id"
+ID = "MacBook"
+LOCAL_IP = socket.gethostbyname(socket.gethostname())
+HOST = "localhost"
+PORT = 50051
 
 
 async def main():
     # Initialize the components
-    detector = Detector('onnx_models/yolov8n.onnx', full_class_names_list=full_class_names_list)
+    detector = Detector('onnx_models/yolov8n_with_metadata.onnx')
     dataloader = DataLoader(0)
-    client = DetectionClient()
+    client = DetectionClient(host=HOST, port=PORT, id=ID, own_ip=LOCAL_IP)
     asyncio.create_task(dataloader.start())
 
     frame_count = 0
@@ -35,30 +27,27 @@ async def main():
     async def ping_loop():
         while True:
             await asyncio.sleep(1)
-            client.ping(id="test_id")
+            client.ping(id=ID)
+
     asyncio.create_task(ping_loop())
 
-    has_sent_error = False
     async for frame in dataloader:
         frame_count += 1
         elapsed_time = time.time() - start_time
-        if elapsed_time > 1.0:
+        if elapsed_time > 5.0:
             fps = frame_count / elapsed_time
-            print(f"FPS: {fps:.2f}")
+            logging.info(f"FPS: {fps:.2f}")
+            client.frame_rate = fps
             frame_count = 0
             start_time = time.time()
 
-        boxes, scores, class_names = detector(frame)
-        print(f"Class IDs: {class_names}")
-        print(f"Bboxes: {boxes}")
-        try:
+        # Perform object detection and send the detections to the server if connected
+        if client.connected:
+            boxes, scores, class_names = detector(frame)
             client(boxes, scores, class_names) 
-            has_sent_error = False
-        except Exception as e:
-            if not has_sent_error:
-                has_sent_error = True
-                print("Failed to send detections")
-                print(f"Error: {e}")
+
+            
+
 
         # print(f"Scores: {scores}")
 

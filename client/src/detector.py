@@ -2,26 +2,17 @@ import time
 import cv2
 import numpy as np
 import onnxruntime
+import onnx
 
 from utils import  multiclass_nms
 
-full_class_names_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
-               'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-               'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
-               'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
-               'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
-               'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
-               'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
-               'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
-               'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
 class Detector:
-    def __init__(self, path, conf_thres=0.7, iou_thres=0.5, full_class_names_list=full_class_names_list):
+    def __init__(self, path, conf_thres=0.7, iou_thres=0.5):
         print(conf_thres)
         self.conf_threshold = conf_thres
         self.iou_threshold = iou_thres
 
-        self.full_class_names_list = full_class_names_list
         self.image_shape = None
         # Initialize model
         self.initialize_model(path)
@@ -39,6 +30,7 @@ class Detector:
         # Get model info
         self.get_input_details()
         self.get_output_details()
+        self.set_class_names(path)
 
 
     def detect_objects(self, image):
@@ -51,19 +43,16 @@ class Detector:
 
         return self.boxes, self.scores, self.class_names
 
-    def get_class_names(self, class_ids):
-        print(class_ids)
-        return [self.full_class_names_list[class_id] for class_id in class_ids]
+    def get_class_names_from_ids(self, class_ids):
+        return [self.full_class_names[class_id] for class_id in class_ids]
 
     def prepare_input(self, image):
         self.img_height, self.img_width = image.shape[:2]
 
         input_img = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        # Resize input image
         input_img = cv2.resize(input_img, (self.input_width, self.input_height))
 
-        # Scale input pixel values to 0 to 1
         input_img = input_img / 255.0
         input_img = input_img.transpose(2, 0, 1)
         input_tensor = input_img[np.newaxis, :, :, :].astype(np.float32)
@@ -75,12 +64,10 @@ class Detector:
         start = time.perf_counter()
         outputs = self.session.run(self.output_names, {self.input_names[0]: input_tensor})
 
-        # print(f"Inference time: {(time.perf_counter() - start)*1000:.2f} ms")
         return outputs
 
     def process_output(self, output):
         predictions = np.squeeze(output[0]).T
-        # Filter out object confidence scores below threshold
         scores = np.max(predictions[:, 4:], axis=1)
         predictions = predictions[scores > self.conf_threshold, :]
         scores = scores[scores > self.conf_threshold]
@@ -88,23 +75,18 @@ class Detector:
         if len(scores) == 0:
             return [], [], []
 
-        # Get the class with the highest confidence
         class_ids = np.argmax(predictions[:, 4:], axis=1)
-
-        # Get bounding boxes for each object
         boxes = self.extract_boxes(predictions)
-        # Apply non-maxima suppression to suppress weak, overlapping bounding boxes
-        # indices = nms(boxes, scores, self.iou_threshold)
         indices = multiclass_nms(boxes, scores, class_ids, self.iou_threshold)
 
-        class_names = self.get_class_names(class_ids[indices])
+        class_names = self.get_class_names_from_ids(class_ids[indices])
 
         return boxes[indices], scores[indices], class_names
 
     def extract_boxes(self, predictions):
-        # Extract boxes from predictions
         boxes = predictions[:, :4]
 
+        # Returns center_x, center_y, width, height
         return boxes
 
 
@@ -120,6 +102,13 @@ class Detector:
         model_outputs = self.session.get_outputs()
         self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
 
+    def set_class_names(self, path):
+        model = onnx.load(path)
+        metadata = {meta.key: meta.value for meta in model.metadata_props}
+        class_names = metadata.get('class_names', '')
+        self.full_class_names = class_names.split(',') if class_names else []
+        print("Class names: ", self.full_class_names)
+        print("Number of classes: ", len(self.full_class_names))
 
 
 

@@ -4,34 +4,67 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct DetectorStore {
-    detectors: HashMap<String, Vec<Detection>>,
+    detections: HashMap<String, Vec<Detection>>,
+    ips: HashMap<String, String>,
+    frame_rates: HashMap<String, f32>,
 }
 
 impl DetectorStore {
     pub fn new() -> Self {
         Self {
-            detectors: HashMap::new(),
+            detections: HashMap::new(),
+            ips: HashMap::new(),
+            frame_rates: HashMap::new(),
         }
     }
 
+    pub fn register_detector(&mut self, id: String, ip: String) {
+        self.ips.insert(id, ip);
+    }
+
+    pub fn get_ip(&self, id: &str) -> Option<&String> {
+        self.ips.get(id)
+    }
+
+    pub fn is_registered(&self, id: &str) -> bool {
+        self.ips.contains_key(id)
+    }
+
+    pub fn set_frame_rate(&mut self, id: &str, frame_rate: f32) {
+        self.frame_rates.insert(id.to_string(), frame_rate);
+    }
+
     pub fn insert(&mut self, id: String, detections: Vec<Detection>) {
-        self.detectors.insert(id, detections);
+        self.detections.insert(id, detections);
     }
 
     pub fn remove(&mut self, id: &str) {
-        self.detectors.remove(id);
+        self.detections.remove(id);
     }
 
     pub fn set_empty(&mut self, id: &str) {
-        self.detectors.insert(id.to_string(), Vec::new());
+        self.detections.insert(id.to_string(), Vec::new());
     }
 
     pub fn to_ws_message(&self) -> String {
-        let messages: Vec<DetectorMessage> = self
-            .detectors
-            .iter()
-            .map(|(id, detections)| DetectorMessage { id, detections })
-            .collect();
+        let mut messages: Vec<DetectorMessage> = Vec::new();
+
+        for (id, detections) in &self.detections {
+            let Some(ip) = self.ips.get(id) else {
+                continue;
+            };
+
+            let Some(frame_rate) = self.frame_rates.get(id) else {
+                continue;
+            };
+
+            messages.push(DetectorMessage {
+                id,
+                detections,
+                ip,
+                frame_rate,
+            });
+        }
 
         serde_json::to_string(&messages).unwrap()
     }
@@ -64,6 +97,8 @@ impl TryFrom<ProtoDetection> for Detection {
 struct DetectorMessage<'a> {
     id: &'a str,
     detections: &'a [Detection],
+    ip: &'a str,
+    frame_rate: &'a f32,
 }
 
 #[derive(Debug, Serialize)]

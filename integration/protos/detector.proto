@@ -11,6 +11,8 @@ message Empty {}
 
 message ProtoPing {
   string id = 1;
+  string ip = 2;
+  float frame_rate = 3;
 }
 
 message ProtoDetections {

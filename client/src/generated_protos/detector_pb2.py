@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x64\x65tector.proto\x12\x08\x44\x65tector\"\x07\n\x05\x45mpty\"\x17\n\tProtoPing\x12\n\n\x02id\x18\x01 \x01(\t\"K\n\x0fProtoDetections\x12\n\n\x02id\x18\x01 \x01(\t\x12,\n\ndetections\x18\x02 \x03(\x0b\x32\x18.Detector.ProtoDetection\"e\n\x0eProtoDetection\x12\x12\n\nclass_name\x18\x01 \x01(\t\x12\r\n\x05score\x18\x02 \x01(\x02\x12\x30\n\x0c\x62ounding_box\x18\x03 \x01(\x0b\x32\x1a.Detector.ProtoBoundingBox\"U\n\x10ProtoBoundingBox\x12\x10\n\x08\x63\x65nter_x\x18\x01 \x01(\x02\x12\x10\n\x08\x63\x65nter_y\x18\x02 \x01(\x02\x12\r\n\x05width\x18\x03 \x01(\x02\x12\x0e\n\x06height\x18\x04 \x01(\x02\x32}\n\x0f\x44\x65tectorService\x12,\n\x04Ping\x12\x13.Detector.ProtoPing\x1a\x0f.Detector.Empty\x12<\n\x0eSendDetections\x12\x19.Detector.ProtoDetections\x1a\x0f.Detector.Emptyb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x64\x65tector.proto\x12\x08\x44\x65tector\"\x07\n\x05\x45mpty\"7\n\tProtoPing\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02ip\x18\x02 \x01(\t\x12\x12\n\nframe_rate\x18\x03 \x01(\x02\"K\n\x0fProtoDetections\x12\n\n\x02id\x18\x01 \x01(\t\x12,\n\ndetections\x18\x02 \x03(\x0b\x32\x18.Detector.ProtoDetection\"e\n\x0eProtoDetection\x12\x12\n\nclass_name\x18\x01 \x01(\t\x12\r\n\x05score\x18\x02 \x01(\x02\x12\x30\n\x0c\x62ounding_box\x18\x03 \x01(\x0b\x32\x1a.Detector.ProtoBoundingBox\"U\n\x10ProtoBoundingBox\x12\x10\n\x08\x63\x65nter_x\x18\x01 \x01(\x02\x12\x10\n\x08\x63\x65nter_y\x18\x02 \x01(\x02\x12\r\n\x05width\x18\x03 \x01(\x02\x12\x0e\n\x06height\x18\x04 \x01(\x02\x32}\n\x0f\x44\x65tectorService\x12,\n\x04Ping\x12\x13.Detector.ProtoPing\x1a\x0f.Detector.Empty\x12<\n\x0eSendDetections\x12\x19.Detector.ProtoDetections\x1a\x0f.Detector.Emptyb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,13 +34,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_EMPTY']._serialized_start=28
   _globals['_EMPTY']._serialized_end=35
   _globals['_PROTOPING']._serialized_start=37
-  _globals['_PROTOPING']._serialized_end=60
-  _globals['_PROTODETECTIONS']._serialized_start=62
-  _globals['_PROTODETECTIONS']._serialized_end=137
-  _globals['_PROTODETECTION']._serialized_start=139
-  _globals['_PROTODETECTION']._serialized_end=240
-  _globals['_PROTOBOUNDINGBOX']._serialized_start=242
-  _globals['_PROTOBOUNDINGBOX']._serialized_end=327
-  _globals['_DETECTORSERVICE']._serialized_start=329
-  _globals['_DETECTORSERVICE']._serialized_end=454
+  _globals['_PROTOPING']._serialized_end=92
+  _globals['_PROTODETECTIONS']._serialized_start=94
+  _globals['_PROTODETECTIONS']._serialized_end=169
+  _globals['_PROTODETECTION']._serialized_start=171
+  _globals['_PROTODETECTION']._serialized_end=272
+  _globals['_PROTOBOUNDINGBOX']._serialized_start=274
+  _globals['_PROTOBOUNDINGBOX']._serialized_end=359
+  _globals['_DETECTORSERVICE']._serialized_start=361
+  _globals['_DETECTORSERVICE']._serialized_end=486
 # @@protoc_insertion_point(module_scope)

@@ -32,7 +32,16 @@ impl MyDetectorService {
 impl DetectorService for MyDetectorService {
     async fn ping(&self, request: Request<ProtoPing>) -> Result<Response<Empty>, Status> {
         let req = request.into_inner();
-        println!("Received Ping request: id={}", req.id);
+        let mut detectors = self.detectors.lock().await;
+        if !detectors.is_registered(&req.id) {
+            detectors.register_detector(req.id.clone(), req.ip.clone());
+        }
+        detectors.set_frame_rate(&req.id, req.frame_rate);
+
+        let broadcast_tx = self.broadcast_tx.lock().await;
+        broadcast_tx
+            .send("registry".to_string())
+            .map_err(|e| Status::internal(format!("Failed to send broadcast message: {}", e)))?;
         Ok(Response::new(Empty {}))
     }
 

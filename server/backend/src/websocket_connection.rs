@@ -37,6 +37,7 @@ impl WebSocketConnection {
             let msg = detectors.to_ws_message();
             if let Err(e) = ws_tx.send(warp::ws::Message::text(msg)).await {
                 error!("Error sending initial counter message: {}", e);
+                return;
             }
         }
 
@@ -48,6 +49,7 @@ impl WebSocketConnection {
                 let msg = counter.to_ws_message();
                 if let Err(e) = ws_tx.send(warp::ws::Message::text(msg)).await {
                     error!("Error sending counter message: {}", e);
+                    break;
                 }
             }
         });
@@ -63,6 +65,7 @@ impl WebSocketConnection {
                 }
                 Err(e) => {
                     error!("Error receiving message: {}", e);
+                    break;
                 }
             }
         }
@@ -94,5 +97,7 @@ async fn handle_message(
             }
         }
     }
-    tx.lock().await.send("".to_string()).unwrap();
+    if let Err(e) = tx.lock().await.send("".to_string()) {
+        error!("Error broadcasting message: {}", e);
+    }
 }
