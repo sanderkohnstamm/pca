@@ -47,8 +47,8 @@ impl TryFrom<ProtoDetection> for Detection {
         };
 
         let bounding_box = BoundingBox {
-            top_left_x: bounding_box.top_left_x,
-            top_left_y: bounding_box.top_left_y,
+            center_x: bounding_box.center_x,
+            center_y: bounding_box.center_y,
             width: bounding_box.width,
             height: bounding_box.height,
         };
@@ -75,8 +75,8 @@ pub struct Detection {
 
 #[derive(Debug, Serialize)]
 pub struct BoundingBox {
-    top_left_x: f32,
-    top_left_y: f32,
+    center_x: f32,
+    center_y: f32,
     width: f32,
     height: f32,
 }

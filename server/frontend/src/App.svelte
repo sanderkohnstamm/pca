@@ -81,16 +81,23 @@
 				<button on:click={() => setToEmpty(id)}>Set to Empty</button>
 				<button on:click={() => removeDetector(id)}>Remove</button>
 				<div class="detections-container">
+					<iframe
+						class="background-iframe"
+						src="http://localhost:8889/cam/"
+						width="1280"
+						height="720"
+					></iframe>
 					{#each detections as detection}
 						<div
 							class="detection-box"
 							style="
-                                left: {detection.bounding_box.top_left_x *
+								left: {(detection.bounding_box.center_x - detection.bounding_box.width / 2) *
 								100}%;
-                                top: {detection.bounding_box.top_left_y * 100}%;
-                                width: {detection.bounding_box.width * 100}%;
-                                height: {detection.bounding_box.height * 100}%;
-                            "
+								top: {(detection.bounding_box.center_y - detection.bounding_box.height / 2) *
+								100}%;
+								width: {detection.bounding_box.width * 100}%;
+								height: {detection.bounding_box.height * 100}%;
+							"
 						>
 							Class: {detection.class}, Score: {detection.score}
 						</div>
@@ -105,7 +112,7 @@
 	main {
 		text-align: center;
 		padding: 1em;
-		max-width: 800px;
+		max-width: 1280px;
 		margin: 0 auto;
 		position: relative;
 	}
@@ -122,14 +129,24 @@
 	.detections-container {
 		position: relative;
 		width: 100%;
-		height: 400px;
+		height: 720px;
 		border: 1px solid #ccc;
 		overflow: hidden;
+	}
+	.background-iframe {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		border: none;
+		top: 0;
+		left: 0;
+		z-index: 0;
 	}
 	.detection-box {
 		position: absolute;
 		border: 2px solid red;
 		box-sizing: border-box;
 		background-color: rgba(255, 0, 0, 0.1);
+		z-index: 1;
 	}
 </style>

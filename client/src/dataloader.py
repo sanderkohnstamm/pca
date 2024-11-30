@@ -1,30 +1,48 @@
 import time
-import cv2
 import asyncio
 
+try:
+    from picamera2 import Picamera2
+    IS_RPI = True
+except ImportError:
+    import cv2
+    IS_RPI = False
+
 class DataLoader:
-    def __init__(self, stream_url):
-        self.stream_url = stream_url
-        self.cap = cv2.VideoCapture(stream_url)
+    def __init__(self, stream_url=0, use_rpi_cam=IS_RPI):
+        self.use_rpi_cam = use_rpi_cam
+        if self.use_rpi_cam:
+            self.picam = Picamera2()
+            config = self.picam.create_preview_configuration()
+            self.picam.configure(config)
+            self.picam.start()
+            time.sleep(2)  # Allow the camera to warm up
+        else:
+            self.cap = cv2.VideoCapture(stream_url)
+            self.input_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.input_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            print(f"Initialized DataLoader with stream URL: {stream_url}")
+            print(f"Input width: {self.input_width}, Input height: {self.input_height}")
+
         self.frame = None
         self.event = asyncio.Event()
 
-        self.input_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.input_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        print(f"Initialized DataLoader with stream URL: {stream_url}")
-        print(f"Input width: {self.input_width}, Input height: {self.input_height}")
-
     async def start(self):
-        while True:
-            ret, frame = self.cap.read()
-            if ret and frame is not None and frame.size > 0:
-                self.frame = frame
+        if self.use_rpi_cam:
+            while True:
+                self.frame = self.picam.capture_array()
                 self.event.set()  # Signal that a new frame is ready
                 await asyncio.sleep(0.001)  # Avoid busy waiting
-
-            else:
-                print("Failed to capture frame")
-                await asyncio.sleep(0.001)  # Avoid busy waiting
+        else:
+            while True:
+                ret, frame = self.cap.read()
+                if ret and frame is not None and frame.size > 0:
+                    self.frame = frame
+                    self.event.set()  # Signal that a new frame is ready
+                    await asyncio.sleep(0.001)  # Avoid busy waiting
+                else:
+                    print("Failed to capture frame")
+                    await asyncio.sleep(0.001)  # Avoid busy waiting
 
     def __aiter__(self):
         return self
@@ -35,7 +53,8 @@ class DataLoader:
         return self.frame
 
 async def run():
-    data_loader = DataLoader(0)  # Use 0 for the default camera or provide a stream URL
+    print('Starting DataLoader...')
+    data_loader = DataLoader(0, use_rpi_cam=IS_RPI)  # Set use_rpi_cam based on the platform
     asyncio.create_task(data_loader.start())
 
     frame_count = 0
@@ -50,15 +69,5 @@ async def run():
             frame_count = 0
             start_time = time.time()
 
-        cv2.imshow('Frame', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    data_loader.cap.release()
-    cv2.destroyAllWindows()
-
 if __name__ == "__main__":
-    try:
-        asyncio.run(run())
-    except KeyboardInterrupt:
-        print("Program interrupted by user")
+    asyncio.run(run())

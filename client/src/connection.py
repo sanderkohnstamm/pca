@@ -31,7 +31,7 @@ def generate_proto_detections(id, boxes, scores, class_names):
         detection = detector_pb2.ProtoDetection(
             class_name=class_name,
             score=score,
-            bounding_box=detector_pb2.ProtoBoundingBox(top_left_x=box[0], top_left_y=box[1], width=box[2], height=box[3])
+            bounding_box=detector_pb2.ProtoBoundingBox(center_x=box[0], center_y=box[1], width=box[2], height=box[3])
         )
         detections.append(detection)
     

@@ -25,8 +25,8 @@ message ProtoDetection {
 }
 
 message ProtoBoundingBox {
-  float top_left_x = 1;
-  float top_left_y = 2;
+  float center_x = 1;
+  float center_y = 2;
   float width = 3;
   float height = 4;
 }

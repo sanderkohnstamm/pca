@@ -5,9 +5,18 @@ import onnxruntime
 
 from utils import  multiclass_nms
 
+full_class_names_list = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
+               'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
+               'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee',
+               'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard',
+               'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple',
+               'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch',
+               'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
+               'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
+               'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
 class Detector:
-    def __init__(self, path, conf_thres=0.7, iou_thres=0.5, full_class_names_list=[]):
+    def __init__(self, path, conf_thres=0.7, iou_thres=0.5, full_class_names_list=full_class_names_list):
         print(conf_thres)
         self.conf_threshold = conf_thres
         self.iou_threshold = iou_thres
@@ -43,6 +52,7 @@ class Detector:
         return self.boxes, self.scores, self.class_names
 
     def get_class_names(self, class_ids):
+        print(class_ids)
         return [self.full_class_names_list[class_id] for class_id in class_ids]
 
     def prepare_input(self, image):
@@ -111,15 +121,29 @@ class Detector:
         self.output_names = [model_outputs[i].name for i in range(len(model_outputs))]
 
 
+
+
+def draw_boxes(image, boxes, scores, class_ids):
+    for box, score, class_id in zip(boxes, scores, class_ids):
+        if class_id == 'person':
+            center_x, center_y, w, h = box
+            x1 = int((center_x - w / 2) * image.shape[1])
+            y1 = int((center_y - h / 2) * image.shape[0])
+            x2 = int((center_x + w / 2) * image.shape[1])
+            y2 = int((center_y + h / 2) * image.shape[0])
+            cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(image, f'{class_id} {score:.2f}', (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
 if __name__ == '__main__':
     # Load the detector
     detector = Detector('onnx_models/yolov8n.onnx')
 
     # Load the image
-    image = cv2.imread('sample.jpg')
+    image = cv2.imread('image.png')
 
     # Perform object detection
     boxes, scores, class_ids = detector(image)  
+    draw_boxes(image, boxes, scores, class_ids)
 
     print(f"Boxes: {boxes}")
     print(f"Scores: {scores}")

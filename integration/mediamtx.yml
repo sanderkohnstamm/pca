@@ -588,7 +588,7 @@ pathDefaults:
   # Period between IDR frames
   rpiCameraIDRPeriod: 60
   # Bitrate
-  rpiCameraBitrate: 5000000
+  rpiCameraBitrate: 1000000
   # H264 profile
   rpiCameraProfile: main
   # H264 level
@@ -696,9 +696,12 @@ pathDefaults:
 # for example "~^(test1|test2)$" will match both "test1" and "test2",
 # for example "~^prefix" will match all paths that start with "prefix".
 paths:
-  # example:
-  test:
-    source: rtsp://127.0.0.1:8554/live.sdp
+  # cam:
+  #   runOnInit: ffmpeg -f avfoundation -framerate 30 -i "0" -c:v libx264 -pix_fmt yuv420p -preset ultrafast -b:v 600k -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH
+  #   runOnInitRestart: yes
+
+    # cam:
+    # source: rpiCamera
 
   # Settings under path "all_others" are applied to all paths that
   # do not match another entry.
