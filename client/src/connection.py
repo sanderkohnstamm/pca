@@ -20,21 +20,8 @@ class DetectionClient:
         self.connect()
 
     def connect(self):
-        try:
-            self.channel = grpc.insecure_channel(f'{self.host}:{self.port}')
-            self.stub = detector_pb2_grpc.DetectorServiceStub(self.channel)
-            self.connected = True
-            logging.info("Connected to server")
-        except Exception as e:
-            logging.error(f"Failed to connect: {e}")
-            self.connected = False
-
-    def reconnect(self):
-        while not self.connected:
-            logging.info("Attempting to reconnect...")
-            self.connect()
-            if not self.connected:
-                time.sleep(5)  # Wait before trying to reconnect
+        self.channel = grpc.insecure_channel(f'{self.host}:{self.port}')
+        self.stub = detector_pb2_grpc.DetectorServiceStub(self.channel)
 
     def __call__(self, boxes, scores, class_names):
         try:
@@ -50,7 +37,7 @@ class DetectionClient:
             request = detector_pb2.ProtoPing(id=id, ip=self.own_ip, frame_rate=self.frame_rate) 
             response = self.stub.Ping(request)
             self.handle_set_connected()
-            return response
+            logging.info(f"Received response: {response}")
         except Exception as e:
             self.handle_disconnect(e)
 
@@ -66,7 +53,6 @@ class DetectionClient:
         if self.connected:
             logging.error(f"Disconnected from server: {error}")
             self.connected = False
-        self.reconnect()
 
     def handle_set_connected(self):
         if not self.connected:

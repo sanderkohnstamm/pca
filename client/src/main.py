@@ -8,7 +8,7 @@ from detector import Detector
 from dataloader import DataLoader
 
 ID = "MacBook"
-LOCAL_IP = socket.gethostbyname(socket.gethostname())
+LOCAL_IP = "192.168.178.115"
 HOST = "localhost"
 PORT = 50051
 
@@ -16,7 +16,7 @@ PORT = 50051
 async def main():
     # Initialize the components
     detector = Detector('onnx_models/yolov8n_with_metadata.onnx')
-    dataloader = DataLoader(0)
+    dataloader = DataLoader("rtsp://192.168.178.115:8554/cam/")
     client = DetectionClient(host=HOST, port=PORT, id=ID, own_ip=LOCAL_IP)
     asyncio.create_task(dataloader.start())
 

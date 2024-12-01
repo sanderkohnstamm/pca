@@ -64,7 +64,7 @@ pub async fn start_grpc_server(
     detectors: Arc<Mutex<DetectorStore>>,
     broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse()?;
+    let addr = "0.0.0.0:50051".parse()?;
     let detector_service = MyDetectorService::new(detectors, broadcast_tx);
 
     println!("gRPC Server listening on {}", addr);

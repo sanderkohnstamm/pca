@@ -6,3 +6,6 @@ python -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. detector.prot
 
 
 make a mediamtx server that exposes the stream at <local_ip>:8889/cam
+
+for pi:
+python3 -m venv --system-site-packages venv

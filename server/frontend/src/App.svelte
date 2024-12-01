@@ -105,8 +105,8 @@
 	<h1>Detectors</h1>
 	<ul>
 		{#each Array.from(detectorMetadata.values()) as { id, ip }}
+			ID: {id} | IP: {ip}
 			<li>
-				ID: {id} | IP: {ip}
 				<!-- <button on:click={() => setToEmpty(id)}>Set to Empty</button>
                 <button on:click={() => removeDetector(id)}>Remove</button> -->
 				<div class="detections-container">
