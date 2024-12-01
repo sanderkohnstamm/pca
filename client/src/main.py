@@ -8,10 +8,12 @@ from detector import Detector
 from dataloader import DataLoader
 
 ID = "RPI"
-LOCAL_IP = "192.168.178.115"
+LOCAL_IP = "192.168.178.119" # MacBook
+# LOCAL_IP = "192.168.178.115" # PI
 HOST = "192.168.178.119"
 PORT = 50051
 SOURCE = "rtsp://127.0.0.1:8554/cam"
+# SOURCE = "0"
 MODEL = "onnx_models/yolov8n_with_metadata.onnx"
 
 
