@@ -3,6 +3,7 @@
 	let socket;
 	let detectorMetadata = new Map();
 	let detectorDetections = new Map();
+	let selectedId = null;
 
 	// Automatically connect when the component is mounted
 	onMount(() => {
@@ -82,6 +83,10 @@
 		}
 	}
 
+	function selectDetector(id) {
+		selectedId = id;
+	}
+
 	// Clean up the WebSocket connection when the component is destroyed
 	onDestroy(() => {
 		if (socket) {
@@ -102,70 +107,114 @@
 </script>
 
 <main>
-	<h1>Detectors</h1>
-	<ul>
-		{#each Array.from(detectorMetadata.values()) as { id, ip }}
-			ID: {id} | IP: {ip}
-			<li>
-				<!-- <button on:click={() => setToEmpty(id)}>Set to Empty</button>
-                <button on:click={() => removeDetector(id)}>Remove</button> -->
-				<div class="detections-container">
-					<!-- svelte-ignore a11y-missing-attribute -->
-					<iframe
-						class="background-iframe"
-						src={`http://${ip}:8889/cam/`}
-						width="1280"
-						height="720"
-					></iframe>
-					{#each detectorDetections.get(id) || [] as detection}
-						<div
-							class="detection-box"
-							style="
-                                left: {(detection.bounding_box.center_x -
-								detection.bounding_box.width / 2) *
-								100}%;
-                                top: {(detection.bounding_box.center_y -
-								detection.bounding_box.height / 2) *
-								100}%;
-                                width: {detection.bounding_box.width * 100}%;
-                                height: {detection.bounding_box.height * 100}%;
-                                background-color: {hashStringToColor(
-								detection.class,
-							)};
-                                border-color: {hashStringToColor(
-								detection.class,
-							)};
-                            "
-						>
-							Class: {detection.class}, Score: {detection.score}
-						</div>
-					{/each}
-				</div>
-			</li>
-		{/each}
-	</ul>
+	<div class="sidebar">
+		<h1>Detectors</h1>
+		<ul>
+			{#each Array.from(detectorMetadata.values()) as { id, ip }}
+				<li>
+					<button
+						class:selected={selectedId === id}
+						on:click={() => selectDetector(id)}
+					>
+						{id} | {ip}
+					</button>
+				</li>
+			{/each}
+		</ul>
+	</div>
+	<div class="content">
+		{#if selectedId}
+			<div class="detections-container">
+				<!-- svelte-ignore a11y-missing-attribute -->
+				<iframe
+					class="background-iframe"
+					src={`http://${detectorMetadata.get(selectedId).ip}:8889/cam/`}
+					width="100%"
+					height="100%"
+				></iframe>
+				{#each detectorDetections.get(selectedId) || [] as detection}
+					<div
+						class="detection-box"
+						style="
+                            left: {(detection.bounding_box.center_x -
+							detection.bounding_box.width / 2) *
+							100}%;
+                            top: {(detection.bounding_box.center_y -
+							detection.bounding_box.height / 2) *
+							100}%;
+                            width: {detection.bounding_box.width * 100}%;
+                            height: {detection.bounding_box.height * 100}%;
+                            background-color: {hashStringToColor(
+							detection.class,
+						)};
+                            border-color: {hashStringToColor(detection.class)};
+                        "
+					>
+						Class: {detection.class}, Score: {detection.score}
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
 </main>
 
 <style>
+	html,
+	body,
 	main {
-		text-align: center;
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		display: flex;
+	}
+	.sidebar {
+		width: 20%;
+		background-color: #f4f4f4;
 		padding: 1em;
+		box-sizing: border-box;
+		overflow-y: auto;
+	}
+	.content {
+		width: 80%;
+		padding: 1em;
+		box-sizing: border-box;
 	}
 	ul {
 		list-style-type: none;
 		padding: 0;
 	}
 	li {
-		margin-bottom: 2em;
+		margin-bottom: 1em;
+		border-bottom: 1px solid #ccc;
+		padding-bottom: 1em;
+	}
+	button {
+		background: none;
+		border: none;
+		padding: 0.5em 1em;
+		cursor: pointer;
+		width: 100%;
+		text-align: left;
+	}
+	button:focus {
+		outline: none;
+	}
+	button.selected {
+		font-weight: bold;
 	}
 	.detections-container {
 		position: relative;
-		display: inline-block;
+		width: 100%;
+		height: calc(100% - 4em); /* Adjust based on header and padding */
 	}
 	.background-iframe {
 		border: none;
 		border-radius: 10px;
 		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		width: 100%;
+		height: 100%;
 	}
 	.detection-box {
 		position: absolute;

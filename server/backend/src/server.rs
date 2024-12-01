@@ -35,6 +35,7 @@ impl DetectorService for MyDetectorService {
         let mut detectors = self.detectors.lock().await;
         if !detectors.is_registered(&req.id) {
             detectors.register_detector(req.id.clone(), req.ip.clone());
+            log::info!("Registered detector: {}, with ip: {}", req.id, req.ip);
         }
         detectors.set_frame_rate(&req.id, req.frame_rate);
 

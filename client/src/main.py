@@ -7,16 +7,18 @@ import time
 from detector import Detector
 from dataloader import DataLoader
 
-ID = "MacBook"
+ID = "RPI"
 LOCAL_IP = "192.168.178.115"
-HOST = "localhost"
+HOST = "192.168.178.119"
 PORT = 50051
+SOURCE = "rtsp://127.0.0.1:8554/cam"
+MODEL = "onnx_models/yolov8n_with_metadata.onnx"
 
 
 async def main():
     # Initialize the components
-    detector = Detector('onnx_models/yolov8n_with_metadata.onnx')
-    dataloader = DataLoader("rtsp://192.168.178.115:8554/cam/")
+    detector = Detector(MODEL)
+    dataloader = DataLoader(SOURCE)
     client = DetectionClient(host=HOST, port=PORT, id=ID, own_ip=LOCAL_IP)
     asyncio.create_task(dataloader.start())
 
