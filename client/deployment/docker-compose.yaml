@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  detector:
+    image: localhost:5000/detector:latest
+    container_name: detector
+    restart: always
+    network_mode: host
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx
+    network_mode: host
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+

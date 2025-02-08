@@ -6,6 +6,7 @@ pub mod detector {
     tonic::include_proto!("detector"); // The string specified here must match the proto package name
 }
 
+use crate::broad_cast_message::BroadCastMessage;
 use crate::detector_store::Detection;
 use crate::detector_store::DetectorStore;
 use detector::{detector_service_server::DetectorService, Empty, ProtoDetections, ProtoPing};
@@ -13,13 +14,13 @@ use detector::{detector_service_server::DetectorService, Empty, ProtoDetections,
 #[derive(Debug)]
 pub struct MyDetectorService {
     detectors: Arc<Mutex<DetectorStore>>,
-    broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
+    broadcast_tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
 }
 
 impl MyDetectorService {
     pub fn new(
         detectors: Arc<Mutex<DetectorStore>>,
-        broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
+        broadcast_tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
     ) -> Self {
         Self {
             detectors,
@@ -41,7 +42,7 @@ impl DetectorService for MyDetectorService {
 
         let broadcast_tx = self.broadcast_tx.lock().await;
         broadcast_tx
-            .send("registry".to_string())
+            .send(BroadCastMessage::Registry)
             .map_err(|e| Status::internal(format!("Failed to send broadcast message: {}", e)))?;
         Ok(Response::new(Empty {}))
     }
@@ -63,7 +64,7 @@ impl DetectorService for MyDetectorService {
 
         let broadcast_tx = self.broadcast_tx.lock().await;
         broadcast_tx
-            .send("detections".to_string())
+            .send(BroadCastMessage::Detections)
             .map_err(|e| Status::internal(format!("Failed to send broadcast message: {}", e)))?;
 
         Ok(Response::new(Empty {}))

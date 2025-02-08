@@ -8,7 +8,7 @@ from detector import Detector
 from dataloader import DataLoader
 
 ID = "RPI"
-LOCAL_IP = "192.168.178.119" # MacBook
+LOCAL_IP = "192.168.178.119"  # MacBook
 # LOCAL_IP = "192.168.178.115" # PI
 HOST = "192.168.178.119"
 PORT = 50051
@@ -23,6 +23,15 @@ async def main():
     dataloader = DataLoader(SOURCE)
     client = DetectionClient(host=HOST, port=PORT, id=ID, own_ip=LOCAL_IP)
     asyncio.create_task(dataloader.start())
+
+    # Log config vars from above
+    logging.basicConfig(level=logging.INFO)
+    logging.info(f"ID: {ID}")
+    logging.info(f"LOCAL_IP: {LOCAL_IP}")
+    logging.info(f"HOST: {HOST}")
+    logging.info(f"PORT: {PORT}")
+    logging.info(f"SOURCE: {SOURCE}")
+    logging.info(f"MODEL: {MODEL}")
 
     frame_count = 0
     start_time = time.time()
@@ -48,15 +57,13 @@ async def main():
         # Perform object detection and send the detections to the server if connected
         if client.connected:
             boxes, scores, class_names = detector(frame)
-            client(boxes, scores, class_names) 
-
-            
-
+            client(boxes, scores, class_names)
 
         # print(f"Scores: {scores}")
 
     dataloader.cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     try:

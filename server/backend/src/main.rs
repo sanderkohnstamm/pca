@@ -14,6 +14,9 @@ use server::detector::detector_service_server::DetectorServiceServer;
 mod detector_store;
 use detector_store::DetectorStore;
 
+mod broad_cast_message;
+use broad_cast_message::BroadCastMessage;
+
 #[tokio::main]
 async fn main() {
     // Initialize the logger
@@ -44,7 +47,7 @@ async fn main() {
 
 async fn start_ws_server(
     detectors: Arc<Mutex<DetectorStore>>,
-    tx: Arc<Mutex<broadcast::Sender<String>>>,
+    tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
 ) {
     let ws_route = warp::path("ws")
         .and(warp::ws())
@@ -62,7 +65,7 @@ async fn start_ws_server(
 
 pub async fn start_grpc_server(
     detectors: Arc<Mutex<DetectorStore>>,
-    broadcast_tx: Arc<Mutex<broadcast::Sender<String>>>,
+    broadcast_tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let addr = "0.0.0.0:50051".parse()?;
     let detector_service = MyDetectorService::new(detectors, broadcast_tx);

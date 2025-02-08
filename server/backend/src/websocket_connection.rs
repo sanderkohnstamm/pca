@@ -1,3 +1,4 @@
+use crate::broad_cast_message::BroadCastMessage;
 use crate::detector_store::DetectorStore;
 use futures_util::SinkExt;
 use futures_util::StreamExt;
@@ -11,14 +12,14 @@ use warp::ws::WebSocket;
 
 pub struct WebSocketConnection {
     ws: WebSocket,
-    tx: Arc<Mutex<broadcast::Sender<String>>>,
+    tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
     detectors: Arc<Mutex<DetectorStore>>,
 }
 
 impl WebSocketConnection {
     pub fn new(
         ws: WebSocket,
-        tx: Arc<Mutex<broadcast::Sender<String>>>,
+        tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
         detectors: Arc<Mutex<DetectorStore>>,
     ) -> Self {
         Self { ws, tx, detectors }
@@ -77,7 +78,7 @@ impl WebSocketConnection {
 async fn handle_message(
     msg: Message,
     mut detectors: tokio::sync::MutexGuard<'_, DetectorStore>,
-    tx: Arc<Mutex<broadcast::Sender<String>>>,
+    tx: Arc<Mutex<broadcast::Sender<BroadCastMessage>>>,
 ) {
     if let Ok(text) = msg.to_str() {
         let data: Value = serde_json::from_str(text).unwrap();
@@ -97,7 +98,7 @@ async fn handle_message(
             }
         }
     }
-    if let Err(e) = tx.lock().await.send("".to_string()) {
+    if let Err(e) = tx.lock().await.send(BroadCastMessage::Detections) {
         error!("Error broadcasting message: {}", e);
     }
 }
